@@ -1,9 +1,12 @@
+# R code for quantifying histone mark enrichment over promoters
+# takes output from deeptools, filters uncovered regions, plots, performs stats
+
 library(tidyverse)
 library(pheatmap)
 library(viridis)
 library(ggpubr)
 
-setwd("~/Dropbox/NRMCB Bivalency Review 2021/TM_analysis/")
+setwd("~/")
 
 ####################
 # H2Aub - Chen ------------------------------------------------------------
