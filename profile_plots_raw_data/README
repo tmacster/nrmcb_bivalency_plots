@@ -1,4 +1,6 @@
 Output of deeptools computeMatrix --outFileNameMatrix. Used for upstream-tail-normalized profile plots of bivalency-associated marks during early development.
 
+Files can be input into the R script for profile plots in the main directory.
+
 Maternal versus paternal as indicated
 Bivalent genes versus random gene subset (control) as indicated
