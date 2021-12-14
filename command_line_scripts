@@ -1,0 +1,74 @@
+# basic scripts for downloading, analyzing, further processing bw/BED files
+# assumes files are already downloaded and located in respective directories: zhang_H3K4me3, zheng_H3K27me3, chen_H2Aub
+
+# if need to download utilities from UCSC Genome Browser:
+wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64.v369/bedGraphToBigWig
+wget http://hgdownload.soe.ucsc.edu/admin/exe/linux.x86_64.v369/liftOver
+chmod u+x <utility>
+
+wget http://hgdownload.soe.ucsc.edu/goldenPath/mm9/liftOver/mm9ToMm10.over.chain.gz
+
+# unzip 
+gzip -d zhang_H3K4me3/*.gz
+
+# ------- processing
+# need to converg mm9 BED files to mm10 and then to bigwig
+for file in sperm_K27me3 PN5_zygote_K27me3_paternal PN5_zygote_K27me3_maternal MII_oocyte_K27me3 ICM_K27me3_paternal ICM_K27me3_maternal E6.5_epiblast_K27me3_paternal E6.5_epiblast_K27me3_maternal 2cell_K27me3_paternal 2cell_K27me3_maternal 8cell_K27me3_maternal 8cell_K27me3_paternal; do ../liftOver zheng_H3K27me3/${file}.bed mm9ToMm10.over.chain.gz zheng_H3K27me3/${file}_mm10.bed unMapped; sort -k1,1 -k2,2n zheng_H3K27me3/${file}_mm10.bed > zheng_H3K27me3/${file}_mm10_sort.bed; ../bedRemoveOverlap zheng_H3K27me3/${file}_mm10_sort.bed zheng_H3K27me3/${file}_mm10_sort2.bed; mv zheng_H3K27me3/${file}_mm10_sort2.bed zheng_H3K27me3/${file}_mm10_sort.bedgraph; ../bedGraphToBigWig zheng_H3K27me3/${file}_mm10_sort.bedgraph /data/refs/mm10/mm10.chrom.sizes zheng_H3K27me3/${file}_mm10.bw; done
+
+for file in MII_oocyte_K4me3 zygote_paternal_K4me3 zygote_maternal_K4me3 ICM_paternal_K4me3 ICM_maternal_K4me3 8cell_paternal_K4me3 8cell_maternal_K4me3 4cell_paternal_K4me3 4cell_maternal_K4me3 2cell_late_paternal_K4me3 2cell_late_maternal_K4me3 2cell_early_paternal_K4me3 2cell_early_maternal_K4me3 sperm_K4me3; do ../liftOver zhang_H3K4me3/${file}.bed mm9ToMm10.over.chain.gz zhang_H3K4me3/${file}_mm10.bed unMapped; sort -k1,1 -k2,2n zhang_H3K4me3/${file}_mm10.bed > zhang_H3K4me3/${file}_mm10_sort.bed; ../bedRemoveOverlap zhang_H3K4me3/${file}_mm10_sort.bed zhang_H3K4me3/${file}_mm10_sort2.bed; mv zhang_H3K4me3/${file}_mm10_sort2.bed zhang_H3K4me3/${file}_mm10_sort.bedgraph; ../bedGraphToBigWig zhang_H3K4me3/${file}_mm10_sort.bedgraph /data/refs/mm10/mm10.chrom.sizes zhang_H3K4me3/${file}_mm10.bw; done
+
+# need to update a few with overlapping lines...
+for file in zheng_H3K27me3/MII_maternal zhang_H3K4me3/MII_oocyte_K4me3 zhang_H3K4me3/sperm_K4me3; do sort -k1,1 -k2,2n ${file}_mm10.bed > ${file}_mm10_sort.bed; ./bedRemoveOverlap ${file}_mm10_sort.bed ${file}_mm10_sort2.bed; mv ${file}_mm10_sort2.bed ${file}_mm10_sort.bedgraph; ./bedGraphToBigWig ${file}_mm10_sort.bedgraph /data/refs/mm10/mm10.chrom.sizes ${file}_mm10.bw; done
+
+# some scripts to shorten filenames
+for filename in mei/*.bigwig; do newname=`echo $filename | sed 's/_merge_replicates_/_/g'`; mv $filename $newname; done
+for filename in mei/*.bigwig; do newname=`echo $filename | sed 's/H2AK119ub1/H2Aub/g'`; mv $filename $newname; done
+
+# -------
+# define bivalent promoters
+for file in Sachs_bivalent_filtered; do awk '{print $3"\t"$5"\t"$5}' ${file}.txt> ${file}.bed; bedtools slop -b 1000 -i ${file}.bed -g /data/refs/mm10/mm10.chrom.sizes > ${file}_prom.bed;  done
+
+# define random promoters
+shuf -n 3448 mm10_tss.bed > mm10_tss_random_filt.bed
+for file in mm10_tss_random_filt; do awk '{print $1"\t"$2"\t"$3}' ${file}.bed > ${file}2.bed; bedtools slop -b 1000 -i ${file}2.bed -g /data/refs/mm10/mm10.chrom.sizes > ${file}_prom.bed;  done
+
+# ------- COUNTS TABLES FOR BOXPLOTS
+source activate /data/deeptools #to enter deeptools env
+
+# bivalent promoters
+multiBigwigSummary BED-file -b zheng_H3K27me3/*.bw -o counts/zheng_H3K27me3_filt.npz --BED Sachs_bivalent_filtered_prom.bed --outRawCounts counts/zheng_H3K27me3_filt.txt --chromosomesToSkip chrY chrX chrM -p 8
+
+multiBigwigSummary BED-file -b zhang_H3K4me3/*.bw -o counts/zhang_H3K4me3_filt.npz --BED Sachs_bivalent_filtered_prom.bed --outRawCounts counts/zhang_H3K4me3_filt.txt --chromosomesToSkip chrY chrX chrM -p 8
+
+multiBigwigSummary BED-file -b chen/*.bw -o counts/chen_H2Aub_filt.npz --BED Sachs_bivalent_filtered_prom.bed --outRawCounts counts/chen_H2Aub_filt.txt --chromosomesToSkip chrY chrX chrM -p 8
+
+# random promoters
+multiBigwigSummary BED-file -b zheng_H3K27me3/*.bw -o counts/zheng_H3K27me3_random_filt.npz --BED mm10_tss_random_filt_prom.bed --outRawCounts counts/zheng_H3K27me3_random_filt.txt --chromosomesToSkip chrY chrX chrM -p 8
+
+multiBigwigSummary BED-file -b zhang_H3K4me3/*.bw -o counts/zhang_H3K4me3_random_filt.npz --BED mm10_tss_random_filt_prom.bed --outRawCounts counts/zhang_H3K4me3_random_filt.txt --chromosomesToSkip chrY chrX chrM -p 8
+
+multiBigwigSummary BED-file -b chen/*.bw -o counts/chen_H2Aub_random_filt.npz --BED mm10_tss_random_filt_prom.bed --outRawCounts counts/chen_H2Aub_random_filt.txt --chromosomesToSkip chrY chrX chrM -p 8
+
+source deactivate
+
+# ------- COUNTS TABLES FOR PROFILE PLOTS
+# maternal K27
+for file in bivalent random; do computeMatrix reference-point -S bigwigs/zheng_H3K27me3/*maternal_mm10.bw bigwigs/zheng_H3K27me3/*oocyte*.bw -R profileplots/${file}_genes.bed --referencePoint center -o profileplots/k27/k27_maternal_${file}.gz --outFileNameMatrix profileplots/k27/k27_maternal_${file}.txt -b 10000 -a 10000 --binSize 100 -p max --smartLabels; plotProfile -m profileplots/k27/k27_maternal_${file}.gz --outFileNameData profileplots/k27/k27_maternal_${file}_data.txt -o profileplots/k27/k27_maternal_${file}.pdf; done 
+
+
+# paternal K27
+for file in bivalent random; do computeMatrix reference-point -S bigwigs/zheng_H3K27me3/*paternal_mm10.bw bigwigs/zheng_H3K27me3/sperm_K27me3_mm10.bw -R profileplots/${file}_genes.bed --referencePoint center -o profileplots/k27/k27_paternal_${file}.gz --outFileNameMatrix profileplots/k27/k27_paternal_${file}.txt -b 10000 -a 10000 --binSize 100 -p max --smartLabels; plotProfile -m profileplots/k27/k27_paternal_${file}.gz --outFileNameData profileplots/k27/k27_paternal_${file}_data.txt -o profileplots/k27/k27_paternal_${file}.pdf; done
+
+# paternal H2Aub
+for file in bivalent random; do computeMatrix reference-point -S bigwigs/chen/*Pat.bw bigwigs/chen/*Pat.merged.bw bigwigs/chen/*Sperm.merged.bw -R profileplots/${file}_genes.bed --referencePoint center -o profileplots/h2a/h2a_paternal_${file}.gz --outFileNameMatrix profileplots/h2a/h2a_paternal_${file}.txt -b 10000 -a 10000 --binSize 100 -p max --smartLabels; plotProfile -m profileplots/h2a/h2a_paternal_${file}.gz --outFileNameData profileplots/h2a/h2a_paternal_${file}_data.txt -o profileplots/h2a/h2a_paternal_${file}.pdf; done 
+
+# maternal H2Aub
+for file in bivalent random; do computeMatrix reference-point -S bigwigs/chen/*Mat.bw bigwigs/chen/*Mat.merged.bw bigwigs/chen/*MII.merged.bw -R profileplots/${file}_genes.bed --referencePoint center -o profileplots/h2a/h2a_maternal_${file}.gz --outFileNameMatrix profileplots/h2a/h2a_maternal_${file}.txt -b 10000 -a 10000 --binSize 100 -p max --smartLabels; plotProfile -m profileplots/h2a/h2a_maternal_${file}.gz --outFileNameData profileplots/h2a/h2a_maternal_${file}_data.txt -o profileplots/h2a/h2a_maternal_${file}.pdf; done 
+
+# maternal H3K4me3
+for file in bivalent random; do computeMatrix reference-point -S bigwigs/zhang_H3K4me3/*maternal*.bw bigwigs/zhang_H3K4me3/*oocyte*.bw -R profileplots/${file}_genes.bed --referencePoint center -o profileplots/k4/k4_maternal_${file}.gz --outFileNameMatrix profileplots/k4/k4_maternal_${file}.txt -b 10000 -a 10000 --binSize 100 -p max --smartLabels; plotProfile -m profileplots/k4/k4_maternal_${file}.gz --outFileNameData profileplots/k4/k4_maternal_${file}_data.txt -o profileplots/k4/k4_maternal_${file}.pdf; done 
+
+# paternal H3K4me3
+for file in bivalent random; do computeMatrix reference-point -S bigwigs/zhang_H3K4me3/*paternal*.bw bigwigs/zhang_H3K4me3/*sperm*_mm10.bw -R profileplots/${file}_genes.bed --referencePoint center -o profileplots/k4/k4_paternal_${file}.gz --outFileNameMatrix profileplots/k4/k4_paternal_${file}.txt -b 10000 -a 10000 --binSize 100 -p max --smartLabels; plotProfile -m profileplots/k4/k4_paternal_${file}.gz --outFileNameData profileplots/k4/k4_paternal_${file}_data.txt -o profileplots/k4/k4_paternal_${file}.pdf; done
+
+
