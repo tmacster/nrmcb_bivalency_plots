@@ -1,0 +1,99 @@
+#!/bin/bash
+
+# simple script to count reads over mm10 promoters --> boxplots in R
+# and to sum reads over promoters (+/- 10kb) --> profile plots in R
+# start in 'mas_revisions' dir
+### @Trisha Macrae, MD PhD - 2022 ###
+
+# define variables
+bigwigs="/folder/with/bigwigs"
+
+bivalent="bivalent_3868"
+random="random_sample"
+matched="matched_cpg_sample"
+
+echo "finding promoters for control datasets"
+for file in $bivalent $random $matched; do
+	bedtools slop -b 1000 -i "$file".bed -g /data/refs/mm10/mm10.chrom.sizes > "$file"_prom.bed
+done
+
+mkdir -p counts
+
+echo "counts over promoters"
+for file in $bivalent $random $matched; do
+	multiBigwigSummary BED-file -b "$bigwigs"/zheng_H3K27me3/*.bw -o counts/zheng_H3K27me3_filt_"$file".npz --BED "$file"_prom.bed \
+	--outRawCounts counts/zheng_H3K27me3_filt_"$file".txt --chromosomesToSkip chrY chrX chrM -p 8
+
+	multiBigwigSummary BED-file -b "$bigwigs"/zhang_H3K4me3/*.bw -o counts/zhang_H3K4me3_filt_"$file".npz --BED "$file"_prom.bed \
+	--outRawCounts counts/zhang_H3K4me3_filt_"$file".txt --chromosomesToSkip chrY chrX chrM -p 8
+
+	multiBigwigSummary BED-file -b "$bigwigs"/chen/*.bw -o counts/chen_H2Aub_filt_"$file".npz --BED "$file"_prom.bed \
+	--outRawCounts counts/chen_H2Aub_filt_"$file".txt --chromosomesToSkip chrY chrX chrM -p 8
+done
+
+mkdir -p profileplots
+mkdir -p profileplots/k27
+mkdir -p profileplots/h2a
+mkdir -p profileplots/k4
+
+echo "counts tables for promoter plots"
+for file in $bivalent $random $matched; do 
+	computeMatrix reference-point -S "$bigwigs"/zheng_H3K27me3/*maternal_mm10.bw "$bigwigs"/zheng_H3K27me3/*oocyte*.bw \
+	-R "$file"_prom.bed --referencePoint center -o profileplots/k27/k27_maternal_"$file".gz \
+	-b 10000 -a 10000 --binSize 100 -p max --smartLabels
+
+	plotProfile -m profileplots/k27/k27_maternal_"$file".gz --outFileNameData profileplots/k27/k27_maternal_"$file"_data.txt \
+	-o profileplots/k27/k27_maternal_"$file".pdf
+done 
+
+# paternal K27
+for file in $bivalent $random $matched; do 
+	computeMatrix reference-point -S "$bigwigs"/zheng_H3K27me3/*paternal_mm10.bw "$bigwigs"/zheng_H3K27me3/sperm_K27me3_mm10.bw \
+	-R "$file"_prom.bed --referencePoint center -o profileplots/k27/k27_paternal_"$file".gz \
+	-b 10000 -a 10000 --binSize 100 -p max --smartLabels
+
+	plotProfile -m profileplots/k27/k27_paternal_"$file".gz --outFileNameData profileplots/k27/k27_paternal_"$file"_data.txt \
+	-o profileplots/k27/k27_paternal_"$file".pdf
+done
+
+# paternal H2Aub
+for file in $bivalent $random $matched; do 
+	computeMatrix reference-point -S "$bigwigs"/chen/*Pat.bw "$bigwigs"/chen/*Pat.merged.bw "$bigwigs"/chen/*Sperm.merged.bw \
+	-R "$file"_prom.bed --referencePoint center -o profileplots/h2a/h2a_paternal_"$file".gz \
+	-b 10000 -a 10000 --binSize 100 -p max --smartLabels
+
+	plotProfile -m profileplots/h2a/h2a_paternal_"$file".gz --outFileNameData profileplots/h2a/h2a_paternal_"$file"_data.txt \
+	-o profileplots/h2a/h2a_paternal_"$file".pdf
+done 
+
+# maternal H2Aub
+for file in $bivalent $random $matched; do 
+	computeMatrix reference-point -S "$bigwigs"/chen/*Mat.bw "$bigwigs"/chen/*Mat.merged.bw "$bigwigs"/chen/*MII.merged.bw \
+	-R "$file"_prom.bed --referencePoint center -o profileplots/h2a/h2a_maternal_"$file".gz \
+	-b 10000 -a 10000 --binSize 100 -p max --smartLabels
+
+	plotProfile -m profileplots/h2a/h2a_maternal_"$file".gz --outFileNameData profileplots/h2a/h2a_maternal_"$file"_data.txt \
+	-o profileplots/h2a/h2a_maternal_"$file".pdf
+done 
+
+# maternal H3K4me3
+for file in $bivalent $random $matched; do 
+	computeMatrix reference-point -S "$bigwigs"/zhang_H3K4me3/*maternal*.bw "$bigwigs"/zhang_H3K4me3/*oocyte*.bw \
+	-R "$file"_prom.bed --referencePoint center -o profileplots/k4/k4_maternal_"$file".gz \
+	-b 10000 -a 10000 --binSize 100 -p max --smartLabels
+
+	plotProfile -m profileplots/k4/k4_maternal_"$file".gz --outFileNameData profileplots/k4/k4_maternal_"$file"_data.txt \
+	-o profileplots/k4/k4_maternal_"$file".pdf
+done 
+
+# paternal H3K4me3
+for file in $bivalent $random $matched; do 
+	computeMatrix reference-point -S "$bigwigs"/zhang_H3K4me3/*paternal*.bw "$bigwigs"/zhang_H3K4me3/*sperm*_mm10.bw \
+	-R "$file"_prom.bed --referencePoint center -o profileplots/k4/k4_paternal_"$file".gz \
+	-b 10000 -a 10000 --binSize 100 -p max --smartLabels
+
+	plotProfile -m profileplots/k4/k4_paternal_"$file".gz --outFileNameData profileplots/k4/k4_paternal_"$file"_data.txt \
+	-o profileplots/k4/k4_paternal_"$file".pdf
+done
+
+echo "DONE!"
