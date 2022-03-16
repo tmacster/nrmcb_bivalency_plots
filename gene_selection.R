@@ -114,5 +114,5 @@ all_subsets %>%
 library(VennDiagram)
 venn.diagram(x = list(mm10_bivalent$GeneID, random_sample$GeneID, matched_cpg_sample$GeneID), 
              category.names = c("bivalent", "random", "matched"), 
-             filename = "~/Dropbox/NRMCB Bivalency Review 2021/THIRD SUBMISSION/figures/venn_diagram.png", 
+             filename = "~/figures/venn_diagram.png", 
              output = TRUE)
