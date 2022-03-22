@@ -1,5 +1,7 @@
 # code to create promoter profile plots for chromatin marks
 # imports output data from deeptools, applies "upstream tail normalization" to correct for global enrichment differences
+# to do this, divides all bins by upstream-most bin (-10kb from TSS)
+# -- @@ Trisha Macrae, MD PHD, 2022 @@ -- 
 
 library(tidyverse)
 library(viridis)
@@ -10,6 +12,7 @@ library(lemon)
 setwd("profileplots/")
 #https://www.biostars.org/p/230599/
 
+# pre-set labels for plots
 labels <- as_labeller(c('gamete' = "gamete", 
                         'zygote' = "zygote", 
                         'early_2cell' = "2 cell", 'pre_2cell' = "2 cell", 
