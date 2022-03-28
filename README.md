@@ -12,6 +12,6 @@ Zheng et al, Molecular Cell, 2016: mm9
 H3K27me3: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE76687
 BED files
 
-Bivalent gene list obtained from Sachs et al, Cell Reports 2013. 
+Bivalent gene list obtained from Mas et al, Nature Genetics, 2018.
 
-Scripts by Trisha Macrae, PhD (2021)
+Scripts by Trisha Macrae, PhD (2021-2022)
