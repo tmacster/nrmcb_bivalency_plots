@@ -16,9 +16,10 @@ genesets <- c("bivalent_3868", "matched_cpg_sample", "random_sample")
 h2a_files <- str_glue("counts/chen_H2Aub_filt_{genesets}.txt")
 h2a_all <- h2a_files %>%
   map_dfr(read_tsv, 
-          .id = "geneset", skip = 1, col_names = c("chr", "start", "end", "mat_zygote", "pat_zygote", 
-                                                   "mat_2C", "pat_2C", "mat_4C", "pat_4C", "mat_epiblast", "pat_epiblast", 
-                                                   "mat_ICM", "pat_ICM", "mat_oocyte", "mat_morula", "pat_morula", "pat_sperm")) %>%
+          .id = "geneset", skip = 1, 
+          col_names = c("chr", "start", "end", "mat_zygote", "pat_zygote", 
+                        "mat_2C", "pat_2C", "mat_4C", "pat_4C", "mat_epiblast", "pat_epiblast", 
+                        "mat_ICM", "pat_ICM", "mat_oocyte", "mat_morula", "pat_morula", "pat_sperm")) %>%
   select(-chr:-end) %>%
   mutate(geneset = case_when(geneset == '1' ~ "bivalent", geneset == '2' ~ "matched", geneset == '3' ~ "random"))
 
@@ -35,8 +36,10 @@ h2a_long <- h2a_all %>%
 k27_files <- str_glue("counts/zheng_H3K27me3_filt_{genesets}.txt")
 k27_all <- k27_files %>%
   map_dfr(read_tsv, 
-          .id = "geneset", skip = 1, col_names = c("chr", "start", "end", "mat_2C", "pat_2C", "mat_8C", "pat_8C", "mat_epiblast", "pat_epiblast", "mat_ICM", "pat_ICM", "mat_oocyte", 
-                                                   "mat_morula", "pat_morula", "mat_zygote", "pat_zygote", "pat_sperm", "pat_sperm_chen")) %>%
+          .id = "geneset", skip = 1, 
+          col_names = c("chr", "start", "end", 
+                        "mat_2C", "pat_2C", "mat_8C", "pat_8C", "mat_epiblast", "pat_epiblast", "mat_ICM", "pat_ICM", "mat_oocyte", 
+                        "mat_morula", "pat_morula", "mat_zygote", "pat_zygote", "pat_sperm", "pat_sperm_chen")) %>%
   select(-chr:-end, -pat_sperm_chen, -matches("morula")) %>% #remove morula data (from a different study)
   mutate(geneset = case_when(geneset == '1' ~ "bivalent", geneset == '2' ~ "matched", geneset == '3' ~ "random"))
 
@@ -52,8 +55,10 @@ k27_long <- k27_all %>%
 k4_files <- str_glue("counts/zhang_H3K4me3_filt_{genesets}.txt")
 k4_all <- k4_files %>%
   map_dfr(read_tsv, 
-          .id = "geneset", skip = 1, col_names = c("chr", "start", "end", "mat_early_2C", "pat_early_2C", "mat_late_2C", "pat_late_2C", "mat_4C", "pat_4C", 
-                                                   "mat_8C", "pat_8C", "mat_ICM", "pat_ICM", "mat_oocyte", "pat_sperm", "mat_zygote", "pat_zygote")) %>%
+          .id = "geneset", skip = 1, 
+          col_names = c("chr", "start", "end", 
+                        "mat_early_2C", "pat_early_2C", "mat_late_2C", "pat_late_2C", "mat_4C", "pat_4C", 
+                        "mat_8C", "pat_8C", "mat_ICM", "pat_ICM", "mat_oocyte", "pat_sperm", "mat_zygote", "pat_zygote")) %>%
   select(-chr:-end) %>%
   mutate(geneset = case_when(geneset == '1' ~ "bivalent", geneset == '2' ~ "matched", geneset == '3' ~ "random"))
 
@@ -73,7 +78,7 @@ all_data_long <- bind_rows("H3K4me3" = k4_long, "H3K27me3" = k27_long, "H2AK119u
 
 # print plots -------------------------------------------------------------
 
-# plot together
+# set themes
 parent <- c(mat = "maternal", pat = "paternal")
 h2a_colors <- c("maroon", "darkgrey", "lightgrey")
 k27_colors <- c("#EFBC68", "darkgrey", "lightgrey")
@@ -93,6 +98,7 @@ theme_var <- theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1, 
         panel.spacing = unit(1, "lines"), 
         legend.position = "top")
 
+# will plot individually for export
 all_data_long %>% 
   filter(histone == "H2AK119ub1") %>%
   ggplot(aes(stage, log2(coverage + 0.1), fill = chip)) +
@@ -134,7 +140,7 @@ all_data_long %>%
 ggsave("/figures/k4_boxplots.pdf", device = "pdf", dpi = 300, width = 6, height = 3, units = "in")
 
 
-# plot together
+# can also plot together
 all_data_long %>% 
   ggplot(aes(stage, log2(coverage + 0.1), fill = chip)) +
   geom_hline(yintercept = 0, linetype = "dashed") +
@@ -145,9 +151,6 @@ all_data_long %>%
   scale_x_discrete(name = "stage") +
   ylim(c(-3,6)) +
   theme_var
-  
-
-  
 
 
 # statistics --------------------------------------------------------------
